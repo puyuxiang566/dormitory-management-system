@@ -1,0 +1,31 @@
+{
+  "bills": [
+    {
+      "roomNumber": "101",
+      "electricityUsage": 0,
+      "electricityCost": 0,
+      "hotWaterCost": 30,
+      "coldWaterCost": 20,
+      "totalAmount": 50
+    },
+    {
+      "roomNumber": "102",
+      "electricityUsage": 0,
+      "electricityCost": 0,
+      "hotWaterCost": 35,
+      "coldWaterCost": 25,
+      "totalAmount": 60
+    },
+    {
+      "roomNumber": "103",
+      "electricityUsage": 0,
+      "electricityCost": 0,
+      "hotWaterCost": 28,
+      "coldWaterCost": 18,
+      "totalAmount": 46
+    }
+  ],
+  "year": 2026,
+  "month": 1,
+  "fileName": "1 月水电费.xlsx"
+}
