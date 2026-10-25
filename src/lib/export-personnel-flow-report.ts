@@ -1,4 +1,5 @@
 import PptxGenJS from 'pptxgenjs';
+import { buildFactoryNameMap, FactoryOption } from '@/lib/factory-utils';
 
 // 颜色常量（不带#，pptxgenjs规范）- 深蓝/青色调
 const COLORS = {
@@ -67,10 +68,39 @@ export interface PersonnelFlowReportData {
   checkInByFactoryDetail: FactoryDetailData[];
   summaryStats: SummaryStats;
   periodLabel: string;
+  factoryOptions?: FactoryOption[];
 }
 
 export async function exportPersonnelFlowReport(data: PersonnelFlowReportData): Promise<void> {
   const { flowData, checkInByFactory, checkOutByFactory, checkInByDepartment, checkInByFactoryDetail, summaryStats, periodLabel } = data;
+
+  const configuredFactories = data.factoryOptions || [];
+  const configuredFactoryNameMap = buildFactoryNameMap(configuredFactories);
+  const defaultFactoryNameMap: Record<string, string> = {
+    'imcn': 'IMCN', 'IMCN': 'IMCN',
+    'imaw': 'IMAW', 'IMAW': 'IMAW',
+    'imft': 'IMFT', 'IMFT': 'IMFT',
+    '职能部门': '职能部门',
+    '未知': '未知',
+  };
+  const formatFactoryName = (factory: string): string =>
+    configuredFactoryNameMap[factory] || defaultFactoryNameMap[factory] || factory;
+
+  const factoryColorMap: Record<string, string> = {
+    'IMCN': COLORS.factoryIMCN,
+    'imcn': COLORS.factoryIMCN,
+    'IMAW': COLORS.factoryIMAW,
+    'imaw': COLORS.factoryIMAW,
+    'IMFT': COLORS.factoryIMFT,
+    'imft': COLORS.factoryIMFT,
+    '职能部门': COLORS.factoryAdmin,
+    '未知': COLORS.factoryUnknown,
+  };
+  configuredFactories.forEach((factory) => {
+    const color = factory.color.replace('#', '').toUpperCase();
+    factoryColorMap[factory.code] = color;
+    factoryColorMap[factory.name] = color;
+  });
 
   const pres = new PptxGenJS();
   pres.layout = 'LAYOUT_16x9';
@@ -305,17 +335,6 @@ export async function exportPersonnelFlowReport(data: PersonnelFlowReportData): 
 
   addPageHeader(factorySlide, pres, '入住/退宿人员工厂分布', `统计周期：${periodLabel}`);
 
-  const factoryColorMap: Record<string, string> = {
-    'IMCN': COLORS.factoryIMCN,
-    'imcn': COLORS.factoryIMCN,
-    'IMAW': COLORS.factoryIMAW,
-    'imaw': COLORS.factoryIMAW,
-    'IMFT': COLORS.factoryIMFT,
-    'imft': COLORS.factoryIMFT,
-    '职能部门': COLORS.factoryAdmin,
-    '未知': COLORS.factoryUnknown,
-  };
-
   // 入住工厂分布饼图（左侧）
   if (checkInByFactory.length > 0) {
     const checkInPieData = [{
@@ -389,11 +408,7 @@ export async function exportPersonnelFlowReport(data: PersonnelFlowReportData): 
         x: 5.1, y: rowY + 0.07, w: 0.15, h: 0.15,
         fill: { color: factoryColor },
       });
-      const formatFactoryNameLocal = (f: string): string => {
-        const m: Record<string, string> = { 'imcn': 'IMCN', 'IMCN': 'IMCN', 'imaw': 'IMAW', 'IMAW': 'IMAW', 'imft': 'IMFT', 'IMFT': 'IMFT', '职能部门': '职能部门', '未知': '未知' };
-        return m[f] || f;
-      };
-      factorySlide.addText(formatFactoryNameLocal(item.factory), {
+      factorySlide.addText(formatFactoryName(item.factory), {
         x: 5.35, y: rowY, w: 2.3, h: 0.28,
         fontSize: 9, fontFace: 'Arial', color: COLORS.dark, bold: true, valign: 'middle',
       });
@@ -444,18 +459,6 @@ export async function exportPersonnelFlowReport(data: PersonnelFlowReportData): 
   // ========== 第6页: 工厂对比 ==========
   const factoryCompareSlide = pres.addSlide();
   factoryCompareSlide.background = { color: COLORS.white };
-
-  // 工厂名格式化
-  const formatFactoryName = (factory: string): string => {
-    const nameMap: Record<string, string> = {
-      'imcn': 'IMCN', 'IMCN': 'IMCN',
-      'imaw': 'IMAW', 'IMAW': 'IMAW',
-      'imft': 'IMFT', 'IMFT': 'IMFT',
-      '职能部门': '职能部门',
-      '未知': '未知',
-    };
-    return nameMap[factory] || factory;
-  };
 
   addPageHeader(factoryCompareSlide, pres, '工厂入住退宿对比', `共${checkInByFactoryDetail.length}个工厂`);
 

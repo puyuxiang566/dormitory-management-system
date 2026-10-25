@@ -1,17 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { Button, Card, Input } from '@/components/ui';
 import { useToastHelpers } from '@/components/ui';
 import { post } from '@/lib/api';
+import { useFactories } from '@/hooks/useFactories';
 
 export default function NewLockerRoomInspectionPage() {
   const router = useRouter();
   const toast = useToastHelpers();
   const [loading, setLoading] = useState(false);
+  const { activeFactories } = useFactories();
 
   const [formData, setFormData] = useState({
     inspectionDate: new Date().toISOString().split('T')[0],
@@ -22,6 +24,13 @@ export default function NewLockerRoomInspectionPage() {
     inspector: '',
     notes: '',
   });
+
+  useEffect(() => {
+    if (activeFactories.length === 0) return;
+    if (!activeFactories.some((factory) => factory.code === formData.factory)) {
+      setFormData((prev) => ({ ...prev, factory: activeFactories[0].code }));
+    }
+  }, [activeFactories, formData.factory]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -121,10 +130,9 @@ export default function NewLockerRoomInspectionPage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none bg-white h-11"
                   required
                 >
-                  <option value="imcn">IMCN</option>
-                  <option value="imaw">IMAW</option>
-                  <option value="imft">IMFT</option>
-                  <option value="职能部门">职能部门</option>
+                  {activeFactories.map((factory) => (
+                    <option key={factory.id} value={factory.code}>{factory.name}</option>
+                  ))}
                 </select>
               </div>
 

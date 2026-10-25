@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
 
     // 筛选参数
     const search = searchParams.get('search') || '';
-    const factory = searchParams.get('factory') || '';
+    const factory = normalizeFactoryCode(searchParams.get('factory') || '');
     const department = searchParams.get('department') || '';
     const categoryId = searchParams.get('categoryId');
     const startDate = searchParams.get('startDate');
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
       data: {
         inspectionDate: new Date(inspectionDate),
         roomNumber,
-        factory,
+        factory: normalizeFactoryCode(factory),
         department,
         personName,
         personId: personId || null,

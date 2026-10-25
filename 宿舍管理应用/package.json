@@ -1,0 +1,50 @@
+{
+  "name": "dormitory-management-system",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "set NEXT_TELEMETRY_DISABLED=1 && next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:migrate": "prisma migrate dev",
+    "db:check": "pwsh ./scripts/check-db.ps1",
+    "test:api": "pwsh ./scripts/test-api.ps1",
+    "test": "npm run lint && npm run type-check && npm run test:api",
+    "start:win": "pwsh ./start-dev.ps1",
+    "build:prod": "next build"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@prisma/client": "^5.0.0",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
+    "mysql2": "^3.18.2",
+    "next": "14.2.0",
+    "next-auth": "^4.24.0",
+    "pptxgenjs": "^4.0.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "recharts": "^3.7.0",
+    "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.0",
+    "postcss": "^8",
+    "prisma": "^5.0.0",
+    "tailwindcss": "^3.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.4.0"
+  }
+}

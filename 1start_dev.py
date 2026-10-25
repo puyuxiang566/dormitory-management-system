@@ -9,7 +9,10 @@ import os
 import sys
 import subprocess
 import signal
+import tempfile
 import time
+import types
+import urllib.request
 import webbrowser
 from pathlib import Path
 
@@ -17,6 +20,130 @@ from pathlib import Path
 if sys.platform == "win32":
     import ctypes
     from ctypes import wintypes
+
+
+# ==================== 网络 / 代理（镜像源）配置 ====================
+# 国内直连 npm 官方源（registry.npmjs.org）经常超时，会导致 npm install 长时间卡住。
+# 这里默认改用国内可用的 npm 镜像源作为「代理加速」，可通过环境变量覆盖：
+#   DORM_NPM_REGISTRY       自定义 npm 镜像地址（默认 https://registry.npmmirror.com）
+#   HTTP_PROXY / HTTPS_PROXY 本机若有代理，设置后脚本与 npm 会自动透传使用
+NPM_REGISTRY = os.environ.get("DORM_NPM_REGISTRY", "https://registry.npmmirror.com")
+NPM_REGISTRY_FALLBACK = "https://registry.npmjs.org/"
+
+# Prisma 引擎二进制镜像：prisma 默认从 binaries.prisma.sh 下载，国内经常超时
+PRISMA_ENGINES_MIRROR = os.environ.get(
+    "PRISMA_ENGINES_MIRROR", "https://registry.npmmirror.com/-/binary/prisma"
+)
+
+
+def build_env():
+    """构造子进程环境变量：让 npm / npx / prisma 都走可用的镜像源（代理加速）"""
+    env = os.environ.copy()
+    # npm 会读取 npm_config_* 形式的环境变量作为配置
+    env["npm_config_registry"] = NPM_REGISTRY
+    env["npm_config_fetch_timeout"] = "60000"   # 单次请求超时 60s，避免无限等待
+    env["npm_config_fetch_retries"] = "3"       # 失败重试 3 次
+    env["PRISMA_ENGINES_MIRROR"] = PRISMA_ENGINES_MIRROR
+    env.setdefault("NEXT_TELEMETRY_DISABLED", "1")
+    return env
+
+
+def npm_install_command(*packages):
+    """统一构造带镜像源与健壮性参数的 npm install 命令"""
+    parts = ["npm", "install"]
+    parts.extend(packages)
+    parts.append(f"--registry={NPM_REGISTRY}")
+    parts.append("--no-audit")
+    parts.append("--no-fund")
+    parts.append("--fetch-timeout=60000")
+    parts.append("--fetch-retries=3")
+    return " ".join(parts)
+
+
+def _ping(url, timeout=8):
+    """探测一个 URL 是否可访问（自动遵循 HTTP_PROXY/HTTPS_PROXY 环境变量）"""
+    try:
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def check_registry():
+    """检测 npm 镜像源（代理）是否可用，不可用则自动回退到官方源"""
+    global NPM_REGISTRY
+
+    Colors.info("正在检查 npm 镜像源（网络代理加速）...")
+    Colors.info(f"当前源: {NPM_REGISTRY}")
+
+    if _ping(NPM_REGISTRY.rstrip("/") + "/-/ping"):
+        Colors.success(f"镜像源可用: {NPM_REGISTRY}")
+        return True
+
+    Colors.warning(f"镜像源不可用，尝试回退官方源: {NPM_REGISTRY_FALLBACK}")
+    if _ping(NPM_REGISTRY_FALLBACK.rstrip("/") + "/-/ping"):
+        NPM_REGISTRY = NPM_REGISTRY_FALLBACK
+        Colors.success(f"官方源可用: {NPM_REGISTRY}")
+        return True
+
+    Colors.warning("未检测到可用的 npm 源，仍按当前配置继续（可能较慢，请耐心等待）")
+    return True
+
+
+def _tail_file(path, n=15):
+    """读取文件最后 n 行"""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            lines = fh.readlines()
+        return lines[-n:]
+    except Exception:
+        return []
+
+
+def run_npm_install(cmd, label="安装依赖"):
+    """执行 npm install：输出写入临时日志并周期性打印心跳。
+
+    这样可以避免长时间无输出看起来像「卡死」，完成后打印日志尾部便于定位问题。
+    """
+    env = build_env()
+    log_path = os.path.join(tempfile.gettempdir(), "dorm_npm_install.log")
+
+    Colors.info(f"执行命令: {cmd}")
+    Colors.info("（首次安装或网络较慢时耗时较长，持续心跳表示仍在进行）")
+
+    try:
+        with open(log_path, "w", encoding="utf-8", errors="replace") as fh:
+            process = subprocess.Popen(
+                cmd,
+                shell=True,
+                stdout=fh,
+                stderr=subprocess.STDOUT,
+                env=env,
+            )
+
+            start = time.time()
+            last_tick = start
+            while process.poll() is None:
+                time.sleep(1)
+                now = time.time()
+                if now - last_tick >= 10:
+                    last_tick = now
+                    print(f"    [..] {label}进行中，已用时 {int(now - start)}s", flush=True)
+
+            elapsed = int(time.time() - start)
+    except Exception as e:
+        Colors.error(f"执行 {label} 时出错: {e}")
+        return None
+
+    tail = _tail_file(log_path, 15)
+    if tail:
+        print("-" * 50)
+        for line in tail:
+            print(f"    {line.rstrip()}")
+        print("-" * 50)
+
+    return types.SimpleNamespace(returncode=process.returncode, stdout="", elapsed=elapsed)
 
 
 def center_console_window():
@@ -118,8 +245,10 @@ class Colors:
         print(f"{cls.INFO}[INFO] {msg}{cls.RESET}")
 
 
-def run_command(cmd, check=True, shell=True):
-    """运行 shell 命令"""
+def run_command(cmd, check=True, shell=True, env=None):
+    """运行 shell 命令（默认带镜像源环境变量）"""
+    if env is None:
+        env = build_env()
     try:
         # Windows 使用 utf-8 编码，忽略无法解码的字符
         encoding = 'utf-8'
@@ -132,7 +261,8 @@ def run_command(cmd, check=True, shell=True):
             capture_output=True,
             text=True,
             encoding=encoding,
-            errors=errors
+            errors=errors,
+            env=env
         )
         return result
     except subprocess.CalledProcessError as e:
@@ -194,12 +324,34 @@ def check_critical_packages():
     Colors.warning(f"缺少关键依赖包: {', '.join(missing)}")
     Colors.info("正在安装缺失的包...")
 
-    result = run_command(f"npm install {' '.join(missing)}")
-    if not result:
+    result = run_npm_install(npm_install_command(*missing), label="安装缺失依赖")
+    if result is None or result.returncode != 0:
         Colors.error("安装缺失包失败")
         return False
 
     Colors.success("缺失依赖包安装完成")
+    return True
+
+
+def dependencies_up_to_date():
+    """判断依赖是否已经是最新，无需再执行 npm install。
+
+    注意：不能拿 package.json 与 node_modules「目录」的时间戳比较。
+    npm install 在依赖已是最新时（up to date）不会改动 node_modules 目录本身，
+    该目录的 mtime 会一直停在很久以前，导致每次启动都误判为「有更新」。
+    这里改用 npm 每次安装后都会更新的 node_modules/.package-lock.json 作为基准。
+    """
+    stamp = os.path.join("node_modules", ".package-lock.json")
+    if not os.path.exists(stamp):
+        # 没有安装痕迹（例如由 pnpm 管理），保守起见执行一次同步
+        return False
+
+    stamp_time = os.path.getmtime(stamp)
+    # 2 秒容差：容忍 npm 写 package-lock.json 与 .package-lock.json 的先后微差
+    tolerance = 2.0
+    for f in ("package.json", "package-lock.json"):
+        if os.path.exists(f) and os.path.getmtime(f) > stamp_time + tolerance:
+            return False
     return True
 
 
@@ -211,22 +363,18 @@ def install_dependencies():
         Colors.warning("未找到 node_modules，正在安装依赖...")
         Colors.info("这可能需要几分钟，请稍候...")
 
-        result = run_command("npm install")
-        if not result:
+        result = run_npm_install(npm_install_command(), label="安装依赖")
+        if result is None or result.returncode != 0:
             Colors.error("依赖安装失败")
             return False
 
         Colors.success("依赖安装成功")
         return True
 
-    # 检查 package.json 是否比 node_modules 更新
-    package_time = os.path.getmtime("package.json")
-    node_modules_time = os.path.getmtime("node_modules")
-
-    if package_time > node_modules_time:
-        Colors.warning("package.json 有更新，正在同步依赖...")
-        result = run_command("npm install")
-        if not result:
+    if not dependencies_up_to_date():
+        Colors.warning("package.json / package-lock.json 有更新，正在同步依赖...")
+        result = run_npm_install(npm_install_command(), label="同步依赖")
+        if result is None or result.returncode != 0:
             Colors.error("同步依赖失败")
             return False
         Colors.success("依赖同步完成")
@@ -408,18 +556,21 @@ def start_dev_server():
     Colors.info("默认账号: admin / admin123\n")
 
     # 使用 subprocess.Popen 启动服务器
+    dev_env = build_env()
     if sys.platform == "win32":
         # Windows: 使用 npm run dev
         process = subprocess.Popen(
             "npm run dev",
             shell=True,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+            env=dev_env
         )
     else:
         # Unix: 使用 npm run dev
         process = subprocess.Popen(
             "npm run dev",
-            shell=True
+            shell=True,
+            env=dev_env
         )
     
     return process
@@ -482,6 +633,7 @@ def main():
     # 步骤 2: 检查依赖
     print("\n[2/5] 依赖检查")
     print("-" * 50)
+    check_registry()
     if not install_dependencies():
         sys.exit(1)
     if not check_critical_packages():

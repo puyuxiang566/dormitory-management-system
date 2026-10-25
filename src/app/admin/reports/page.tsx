@@ -16,6 +16,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { Button, Card, Badge, Loading } from '@/components/ui';
 import { useStatistics, useOccupancyTrend, useDistribution } from '@/hooks/useApi';
+import { useFactories } from '@/hooks/useFactories';
 import {
   AreaChart,
   Area,
@@ -38,9 +39,6 @@ interface Report {
   updateTime: string;
   period: string;
 }
-
-// 工厂颜色配置
-const FACTORY_COLORS: Record<string, string> = { 'IMCN': '#10b981', 'IMAW': '#f59e0b', 'IMFT': '#8b5cf6', '职能部门': '#ec4899', '未知': '#94a3b8' };
 
 // 报表列表（从后端获取）
 const defaultReports: Report[] = [
@@ -209,18 +207,19 @@ export default function ReportsPage() {
 
   const { data: trendData } = useOccupancyTrend(30);
   const { data: distributionData } = useDistribution();
+  const { factories, colorOf } = useFactories();
 
   // 工厂分布数据排序（与宿舍资源页面一致）
   const factoryData = React.useMemo(() => {
     const data: { name: string; value: number }[] = (distributionData?.data as any)?.factory || [];
-    const order = ['IMCN', 'IMFT', 'IMAW', '职能部门', '未知'];
+    const order = [...factories.map((factory) => factory.name), '未知'];
     const result: { name: string; value: number }[] = [];
     for (const name of order) {
       const item = data.find((d) => d.name === name);
       if (item) result.push(item);
     }
     return result;
-  }, [(distributionData?.data as any)?.factory]);
+  }, [(distributionData?.data as any)?.factory, factories]);
 
   const periods = [
     { value: 'current', label: '本月' },
@@ -365,7 +364,7 @@ export default function ReportsPage() {
                   />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]} label={{ position: 'top', fill: '#475569', fontSize: 12, fontWeight: 500 }}>
                     {factoryData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={FACTORY_COLORS[entry.name] || COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={colorOf(entry.name) || COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -376,7 +375,7 @@ export default function ReportsPage() {
           <div className="flex justify-center gap-4 mt-2 flex-wrap">
             {factoryData.map((item: any) => (
               <div key={item.name} className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: FACTORY_COLORS[item.name] }}></span>
+                <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: colorOf(item.name) }}></span>
                 <span className="text-sm text-slate-600">{item.name}</span>
               </div>
             ))}

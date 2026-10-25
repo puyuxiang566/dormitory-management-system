@@ -1,0 +1,445 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AccessRecord {
+  id        Int      @id @default(autoincrement())
+  personId  Int?
+  deviceId  String?
+  eventType String
+  timestamp DateTime @default(now())
+  note      String?
+  person    Person?  @relation(fields: [personId], references: [id], map: "AccessRecord_personId_fkey")
+
+  @@index([personId], map: "AccessRecord_personId_idx")
+  @@index([timestamp], map: "AccessRecord_timestamp_idx")
+  @@map("accessrecord")
+}
+
+model Announcement {
+  id          Int       @id @default(autoincrement())
+  title       String
+  content     String
+  type        String?
+  targetRole  String?
+  isActive    Boolean   @default(true)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([isActive], map: "Announcement_isActive_idx")
+  @@index([publishedAt], map: "Announcement_publishedAt_idx")
+  @@map("announcement")
+}
+
+model Application {
+  id          Int       @id @default(autoincrement())
+  personId    Int
+  type        String
+  status      String    @default("PENDING")
+  requestData String?
+  approvedBy  Int?
+  approvedAt  DateTime?
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  person      Person    @relation(fields: [personId], references: [id], map: "Application_personId_fkey")
+
+  @@index([personId], map: "Application_personId_idx")
+  @@index([status], map: "Application_status_idx")
+  @@index([type], map: "Application_type_idx")
+  @@map("application")
+}
+
+model Asset {
+  id                  Int       @id @default(autoincrement())
+  roomId              Int?
+  name                String
+  type                String?
+  description         String?
+  status              String?
+  assetCode           String?   @unique(map: "Asset_assetCode_key")
+  specification       String?
+  purchaseDate        DateTime?
+  price               Float?
+  responsiblePersonId Int?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  person              Person?   @relation(fields: [responsiblePersonId], references: [id], map: "Asset_responsiblePersonId_fkey")
+  room                Room?     @relation(fields: [roomId], references: [id], map: "Asset_roomId_fkey")
+
+  @@index([responsiblePersonId], map: "Asset_responsiblePersonId_idx")
+  @@index([roomId], map: "Asset_roomId_idx")
+  @@map("asset")
+}
+
+model Bill {
+  id                Int       @id @default(autoincrement())
+  personId          Int
+  month             Int
+  year              Int
+  electricity       Float?
+  startMeterReading Float?
+  endMeterReading   Float?
+  water             Float?
+  hotWater          Float?
+  coldWater         Float?
+  otherFees         Float?
+  totalAmount       Float
+  status            String
+  dueDate           DateTime?
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  person            Person    @relation(fields: [personId], references: [id], map: "Bill_personId_fkey")
+
+  @@index([personId], map: "Bill_personId_idx")
+  @@index([status], map: "Bill_status_idx")
+  @@index([year, month], map: "Bill_year_month_idx")
+  @@map("bill")
+}
+
+model Building {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique(map: "Building_name_key")
+  description     String?
+  address         String?
+  floors          Int
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  permissiongroup PermissionGroup[]
+  person          Person[]
+  room            Room[]
+
+  @@index([name], map: "Building_name_idx")
+  @@map("building")
+}
+
+model EmergencyContact {
+  id           Int      @id @default(autoincrement())
+  personId     Int
+  name         String
+  relationship String
+  phone        String
+  note         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  person       Person   @relation(fields: [personId], references: [id], map: "EmergencyContact_personId_fkey")
+
+  @@index([personId], map: "EmergencyContact_personId_idx")
+  @@map("emergencycontact")
+}
+
+model Factory {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique(map: "Factory_code_key")
+  name      String
+  color     String   @default("#10b981")
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive], map: "Factory_isActive_idx")
+  @@index([sortOrder], map: "Factory_sortOrder_idx")
+  @@map("factory")
+}
+
+model FaceRecord {
+  id                Int              @id @default(autoincrement())
+  personId          Int?
+  faceData          String
+  isActive          Boolean          @default(true)
+  permissionGroupId Int?
+  captureMethod     String?
+  expiresAt         DateTime?
+  isTemporary       Boolean          @default(false)
+  visitorId         Int?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  permissiongroup   PermissionGroup? @relation(fields: [permissionGroupId], references: [id], map: "FaceRecord_permissionGroupId_fkey")
+  person            Person?          @relation(fields: [personId], references: [id], map: "FaceRecord_personId_fkey")
+  visitor           Visitor?         @relation(fields: [visitorId], references: [id], map: "FaceRecord_visitorId_fkey")
+
+  @@index([expiresAt], map: "FaceRecord_expiresAt_idx")
+  @@index([isActive], map: "FaceRecord_isActive_idx")
+  @@index([isTemporary], map: "FaceRecord_isTemporary_idx")
+  @@index([permissionGroupId], map: "FaceRecord_permissionGroupId_idx")
+  @@index([personId], map: "FaceRecord_personId_idx")
+  @@index([visitorId], map: "FaceRecord_visitorId_idx")
+  @@map("facerecord")
+}
+
+model MaintenanceTicket {
+  id          Int       @id @default(autoincrement())
+  personId    Int?
+  roomId      Int?
+  title       String
+  description String?
+  images      String?
+  status      String    @default("OPEN")
+  assignedTo  Int?
+  resolvedAt  DateTime?
+  rating      Int?
+  comment     String?
+  reportedBy  String?   // 报修人用户名（直接记录，不关联 Person）
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  person      Person?   @relation(fields: [personId], references: [id], map: "MaintenanceTicket_personId_fkey")
+  room        Room?     @relation(fields: [roomId], references: [id], map: "MaintenanceTicket_roomId_fkey")
+
+  @@index([personId], map: "MaintenanceTicket_personId_idx")
+  @@index([roomId], map: "MaintenanceTicket_roomId_idx")
+  @@index([status], map: "MaintenanceTicket_status_idx")
+  @@index([reportedBy], map: "MaintenanceTicket_reportedBy_idx")
+  @@map("maintenanceticket")
+}
+
+model MeterReading {
+  id          Int      @id @default(autoincrement())
+  roomId      Int
+  readingDate DateTime
+  electricity Float?
+  water       Float?
+  hotWater    Float?
+  coldWater   Float?
+  isManual    Boolean  @default(false)
+  recordedBy  Int?
+  createdAt   DateTime @default(now())
+  room        Room     @relation(fields: [roomId], references: [id], map: "MeterReading_roomId_fkey")
+
+  @@index([readingDate], map: "MeterReading_readingDate_idx")
+  @@index([roomId], map: "MeterReading_roomId_idx")
+  @@map("meterreading")
+}
+
+model OperationLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  module    String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], map: "OperationLog_userId_fkey")
+
+  @@index([createdAt], map: "OperationLog_createdAt_idx")
+  @@index([module], map: "OperationLog_module_idx")
+  @@index([userId], map: "OperationLog_userId_idx")
+  @@map("operationlog")
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  personId  Int
+  billId    Int?
+  amount    Float
+  method    String
+  paidAt    DateTime @default(now())
+  note      String?
+  createdAt DateTime @default(now())
+  person    Person   @relation(fields: [personId], references: [id], map: "Payment_personId_fkey")
+
+  @@index([paidAt], map: "Payment_paidAt_idx")
+  @@index([personId], map: "Payment_personId_idx")
+  @@map("payment")
+}
+
+model PermissionGroup {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?
+  buildingId  Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  facerecord  FaceRecord[]
+  building    Building?    @relation(fields: [buildingId], references: [id], map: "PermissionGroup_buildingId_fkey")
+
+  @@index([buildingId], map: "PermissionGroup_buildingId_idx")
+  @@index([name], map: "PermissionGroup_name_idx")
+  @@map("permissiongroup")
+}
+
+model Person {
+  id                Int                 @id @default(autoincrement())
+  employeeId        String              @unique(map: "Person_employeeId_key")
+  name              String
+  department        String?
+  position          String?
+  phone             String?
+  idCard            String?
+  gender            String?
+  factory           String              @default("imcn")
+  status            String              @default("ACTIVE")
+  checkInDate       DateTime?
+  checkOutDate      DateTime?
+  buildingId        Int?
+  roomId            Int?
+  bedNumber         String?
+  isRoomLeader      Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @default(now()) @updatedAt
+  accessrecord      AccessRecord[]
+  application       Application[]
+  asset             Asset[]
+  bill              Bill[]
+  emergencycontact  EmergencyContact[]
+  facerecord        FaceRecord[]
+  maintenanceticket MaintenanceTicket[]
+  payment           Payment[]
+  building          Building?           @relation(fields: [buildingId], references: [id], map: "Person_buildingId_fkey")
+  room              Room?               @relation(fields: [roomId], references: [id], map: "Person_roomId_fkey")
+  roomchangehistory RoomChangeHistory[]
+  user              User?
+  visitor           Visitor[]
+  inspections      InspectionRecord[]
+
+  @@index([buildingId], map: "Person_buildingId_idx")
+  @@index([employeeId], map: "Person_employeeId_idx")
+  @@index([roomId], map: "Person_roomId_idx")
+  @@index([status], map: "Person_status_idx")
+  @@map("person")
+}
+
+model Room {
+  id                                                   Int                 @id @default(autoincrement())
+  buildingId                                           Int
+  floorNumber                                          Int
+  roomNumber                                           String
+  bedCount                                             Int
+  status                                               String              @default("VACANT")
+  createdAt                                            DateTime            @default(now())
+  updatedAt                                            DateTime            @updatedAt
+  asset                                                Asset[]
+  maintenanceticket                                    MaintenanceTicket[]
+  meterreading                                         MeterReading[]
+  person                                               Person[]
+  building                                             Building            @relation(fields: [buildingId], references: [id], map: "Room_buildingId_fkey")
+  roomchangehistory_roomchangehistory_fromRoomIdToroom RoomChangeHistory[] @relation("roomchangehistory_fromRoomIdToroom")
+  roomchangehistory_roomchangehistory_toRoomIdToroom   RoomChangeHistory[] @relation("roomchangehistory_toRoomIdToroom")
+
+  @@unique([buildingId, roomNumber], map: "Room_buildingId_roomNumber_key")
+  @@index([buildingId], map: "Room_buildingId_idx")
+  @@index([status], map: "Room_status_idx")
+  @@map("room")
+}
+
+model RoomChangeHistory {
+  id                                      Int      @id @default(autoincrement())
+  personId                                Int
+  fromRoomId                              Int?
+  toRoomId                                Int?
+  changeDate                              DateTime
+  reason                                  String?
+  createdAt                               DateTime @default(now())
+  room_roomchangehistory_fromRoomIdToroom Room?    @relation("roomchangehistory_fromRoomIdToroom", fields: [fromRoomId], references: [id], map: "RoomChangeHistory_fromRoomId_fkey")
+  person                                  Person   @relation(fields: [personId], references: [id], map: "RoomChangeHistory_personId_fkey")
+  room_roomchangehistory_toRoomIdToroom   Room?    @relation("roomchangehistory_toRoomIdToroom", fields: [toRoomId], references: [id], map: "RoomChangeHistory_toRoomId_fkey")
+
+  @@index([changeDate], map: "RoomChangeHistory_changeDate_idx")
+  @@index([fromRoomId], map: "RoomChangeHistory_fromRoomId_fkey")
+  @@index([personId], map: "RoomChangeHistory_personId_idx")
+  @@index([toRoomId], map: "RoomChangeHistory_toRoomId_fkey")
+  @@map("roomchangehistory")
+}
+
+model SystemSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique(map: "SystemSetting_key_key")
+  value       String?
+  group       String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([group], map: "SystemSetting_group_idx")
+  @@index([key], map: "SystemSetting_key_idx")
+  @@map("systemsetting")
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  username     String         @unique(map: "User_username_key")
+  password     String
+  role         String         @default("EMPLOYEE")
+  personId     Int?           @unique(map: "User_personId_key")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  operationlog OperationLog[]
+  person       Person?        @relation(fields: [personId], references: [id], map: "User_personId_fkey")
+
+  @@index([role], map: "User_role_idx")
+  @@index([username], map: "User_username_idx")
+  @@map("user")
+}
+
+model Visitor {
+  id           Int          @id @default(autoincrement())
+  name         String
+  idCard       String?
+  phone        String?
+  visitPurpose String?
+  visitDate    DateTime
+  startTime    DateTime?
+  endTime      DateTime?
+  hostId       Int
+  status       String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  facerecord   FaceRecord[]
+  person       Person       @relation(fields: [hostId], references: [id], map: "Visitor_hostId_fkey")
+
+  @@index([hostId], map: "Visitor_hostId_idx")
+  @@index([visitDate], map: "Visitor_visitDate_idx")
+  @@map("visitor")
+}
+
+model ViolationCategory {
+  id          Int               @id @default(autoincrement())
+  name        String            @unique(map: "ViolationCategory_name_key")
+  description String?
+  isActive    Boolean           @default(true)
+  sortOrder   Int               @default(0)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  inspection  InspectionRecord[]
+
+  @@index([isActive], map: "ViolationCategory_isActive_idx")
+  @@index([sortOrder], map: "ViolationCategory_sortOrder_idx")
+  @@map("violationcategory")
+}
+
+model InspectionRecord {
+  id              Int               @id @default(autoincrement())
+  inspectionDate  DateTime
+  roomNumber      String
+  factory         String
+  department      String
+  personName      String
+  personId        Int?
+  categoryId      Int?
+  violationDesc   String            @db.Text
+  action          String?
+  inspector       String
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  category        ViolationCategory? @relation(fields: [categoryId], references: [id], map: "InspectionRecord_categoryId_fkey")
+  person          Person?           @relation(fields: [personId], references: [id], map: "InspectionRecord_personId_fkey")
+
+  @@index([inspectionDate], map: "InspectionRecord_inspectionDate_idx")
+  @@index([personName], map: "InspectionRecord_personName_idx")
+  @@index([factory], map: "InspectionRecord_factory_idx")
+  @@index([department], map: "InspectionRecord_department_idx")
+  @@index([roomNumber], map: "InspectionRecord_roomNumber_idx")
+  @@index([personId], map: "InspectionRecord_personId_idx")
+  @@index([categoryId], map: "InspectionRecord_categoryId_idx")
+  @@index([inspector], map: "InspectionRecord_inspector_idx")
+  @@map("inspectionrecord")
+}

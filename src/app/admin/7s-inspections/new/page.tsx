@@ -7,6 +7,8 @@ import { ArrowLeftIcon, HomeIcon, UserIcon } from '@heroicons/react/24/outline';
 import { Button, Card, Input } from '@/components/ui';
 import { useToastHelpers } from '@/components/ui';
 import { post, get } from '@/lib/api';
+import { useFactories } from '@/hooks/useFactories';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 
 interface Room {
   id: number;
@@ -30,6 +32,7 @@ export default function NewInspectionPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [selectedPersonId, setSelectedPersonId] = useState<string>('');
+  const { activeFactories } = useFactories();
 
   const [formData, setFormData] = useState({
     inspectionDate: new Date().toISOString().split('T')[0],
@@ -42,6 +45,13 @@ export default function NewInspectionPage() {
     inspector: '',
     notes: '',
   });
+
+  useEffect(() => {
+    if (activeFactories.length === 0) return;
+    if (!activeFactories.some((factory) => factory.code === formData.factory)) {
+      setFormData((prev) => ({ ...prev, factory: activeFactories[0].code }));
+    }
+  }, [activeFactories, formData.factory]);
 
   // 加载已住人房间列表
   useEffect(() => {
@@ -113,7 +123,7 @@ export default function NewInspectionPage() {
         ...prev,
         personName: selectedPerson.name,
         department: selectedPerson.department || '',
-        factory: selectedPerson.factory || 'imcn',
+        factory: normalizeFactoryCode(selectedPerson.factory) || 'imcn',
       }));
     }
   };
@@ -275,10 +285,9 @@ export default function NewInspectionPage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none bg-white h-11"
                   required
                 >
-                  <option value="imcn">IMCN</option>
-                  <option value="imaw">IMAW</option>
-                  <option value="imft">IMFT</option>
-                  <option value="职能部门">职能部门</option>
+                  {activeFactories.map((factory) => (
+                    <option key={factory.id} value={factory.code}>{factory.name}</option>
+                  ))}
                 </select>
               </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useFactories } from '@/hooks/useFactories';
 
 interface DistributionData {
   factory: string;
@@ -20,45 +21,25 @@ interface DistributionChartProps {
   departmentDistribution: DepartmentData[];
 }
 
-const FACTORY_COLORS: Record<string, string> = {
-  'IMCN': '#10b981',
-  'IMAW': '#f59e0b',
-  'IMFT': '#8b5cf6',
-  '职能部门': '#ec4899',
-};
-const FALLBACK_COLORS = ['#06B6D4', '#84CC16', '#3B82F6', '#EF4444', '#F59E0B'];
-
 export default function DistributionChart({
   factoryDistribution,
   departmentDistribution,
 }: DistributionChartProps) {
+  const { nameOf, colorOf } = useFactories();
+
   // 为工厂分布准备饼图数据
   const pieData = factoryDistribution.map((item) => ({
-    name: item.factory,
+    name: nameOf(item.factory),
     value: item.count,
   }));
 
-  // 建立工厂 -> 颜色 的映射，优先使用工厂专属颜色
-  const factoryColorMap = new Map<string, string>();
-  let fallbackIndex = 0;
-  factoryDistribution.forEach((item) => {
-    const key = item.factory.toUpperCase();
-    const color = FACTORY_COLORS[key] || FACTORY_COLORS[item.factory] || FALLBACK_COLORS[fallbackIndex % FALLBACK_COLORS.length];
-    factoryColorMap.set(key, color);
-    if (!FACTORY_COLORS[key] && !FACTORY_COLORS[item.factory]) fallbackIndex++;
-  });
-
-  // 按工厂名大小写不敏感查找颜色
-  const getFactoryColor = (factoryName: string) =>
-    factoryColorMap.get(factoryName.toUpperCase()) || '#94A3B8';
-
   // 为部门分布准备数据：显示"工厂-部门"，并携带工厂颜色
   const barData = departmentDistribution.map((item) => ({
-    label: `${item.factory.toUpperCase()}-${item.department}`,
+    label: `${nameOf(item.factory)}-${item.department}`,
     department: item.department,
-    factory: item.factory,
+    factory: nameOf(item.factory),
     count: item.count,
-    fill: getFactoryColor(item.factory),
+    fill: colorOf(item.factory),
   }));
 
   return (
@@ -84,7 +65,7 @@ export default function DistributionChart({
                 dataKey="value"
               >
                 {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getFactoryColor(entry.name)} />
+                  <Cell key={`cell-${index}`} fill={colorOf(entry.name)} />
                 ))}
               </Pie>
               <Tooltip />

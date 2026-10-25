@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getFactoryOptions } from '@/lib/factory-config';
+import { buildFactoryNameMap } from '@/lib/factory-utils';
 
 export async function GET() {
   try {
@@ -30,21 +32,20 @@ export async function GET() {
       return acc;
     }, {});
 
+    const factories = await getFactoryOptions();
+    const factoryNameMap = buildFactoryNameMap(factories);
+
     const factoryDistribution = persons.reduce((acc: any, p: any) => {
-      let f = p.factory;
-      if (f === 'imcn') f = 'IMCN';
-      else if (f === 'imaw') f = 'IMAW';
-      else if (f === 'imft') f = 'IMFT';
-      else if (f === '职能部门') f = '职能部门';
-      else f = '未知';
-      
+      const rawFactory = p.factory ? String(p.factory) : '';
+      const f = rawFactory ? (factoryNameMap[rawFactory] || rawFactory) : '未知';
+
       if (!acc[f]) acc[f] = 0;
       acc[f]++;
       return acc;
     }, {});
 
     const genderOrder = ['男', '女', '未知'];
-    const factoryOrder = ['IMCN', 'IMFT', 'IMAW', '职能部门', '未知'];
+    const factoryOrder = [...factories.map((factory) => factory.name), '未知'];
 
     // 按照指定顺序构建数组，只包含实际有数据的项
     const sortByOrder = (data: Record<string, number>, order: string[]) => {
@@ -54,6 +55,10 @@ export async function GET() {
           result.push({ name: key, value: data[key] });
         }
       }
+      Object.entries(data)
+        .filter(([key]) => !order.includes(key))
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .forEach(([key, value]) => result.push({ name: key, value: value as number }));
       return result;
     };
 

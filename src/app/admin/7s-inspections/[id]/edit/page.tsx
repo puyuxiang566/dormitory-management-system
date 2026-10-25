@@ -7,6 +7,8 @@ import { ArrowLeftIcon, HomeIcon, UserIcon } from '@heroicons/react/24/outline';
 import { Button, Card, Input } from '@/components/ui';
 import { useToastHelpers } from '@/components/ui';
 import { get, patch } from '@/lib/api';
+import { useFactories } from '@/hooks/useFactories';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 
 interface Room {
   id: number;
@@ -47,6 +49,7 @@ export default function EditInspectionPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<string>('');
   const [selectedPersonId, setSelectedPersonId] = useState<string>('');
+  const { factories } = useFactories();
 
   const [formData, setFormData] = useState({
     inspectionDate: '',
@@ -86,7 +89,7 @@ export default function EditInspectionPage() {
           setFormData({
             inspectionDate: inspectionDateStr,
             roomNumber: record.roomNumber || '',
-            factory: record.factory || 'imcn',
+            factory: normalizeFactoryCode(record.factory) || 'imcn',
             department: record.department || '',
             personName: record.personName || '',
             violationDesc: record.violationDesc || '',
@@ -185,7 +188,7 @@ export default function EditInspectionPage() {
         ...prev,
         personName: selectedPerson.name,
         department: selectedPerson.department || '',
-        factory: selectedPerson.factory || 'imcn',
+        factory: normalizeFactoryCode(selectedPerson.factory) || 'imcn',
       }));
     }
   };
@@ -359,10 +362,11 @@ export default function EditInspectionPage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none bg-white h-11"
                   required
                 >
-                  <option value="imcn">IMCN</option>
-                  <option value="imaw">IMAW</option>
-                  <option value="imft">IMFT</option>
-                  <option value="职能部门">职能部门</option>
+                  {factories
+                    .filter((factory) => factory.isActive || normalizeFactoryCode(factory.code) === normalizeFactoryCode(formData.factory))
+                    .map((factory) => (
+                      <option key={factory.id} value={factory.code}>{factory.name}</option>
+                    ))}
                 </select>
               </div>
 

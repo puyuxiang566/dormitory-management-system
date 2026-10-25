@@ -9,6 +9,7 @@ import {
 import { Button, Card, Input } from '@/components/ui';
 import { useToastHelpers } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useFactories } from '@/hooks/useFactories';
 
 export default function NewPersonPage() {
   const router = useRouter();
@@ -37,6 +38,7 @@ export default function NewPersonPage() {
 
   const [buildings, setBuildings] = useState<{ id: number; name: string }[]>([]);
   const [rooms, setRooms] = useState<{ id: number; roomNumber: string }[]>([]);
+  const { activeFactories } = useFactories();
 
   useEffect(() => {
     async function loadBuildings() {
@@ -51,6 +53,14 @@ export default function NewPersonPage() {
     }
     loadBuildings();
   }, []);
+
+  useEffect(() => {
+    if (activeFactories.length === 0) return;
+    const exists = activeFactories.some((factory) => factory.code === formData.factory);
+    if (!exists) {
+      setFormData((prev) => ({ ...prev, factory: activeFactories[0].code }));
+    }
+  }, [activeFactories, formData.factory]);
 
   const handleBuildingChange = async (buildingId: string) => {
     setFormData((prev) => ({ ...prev, buildingId, roomId: '' }));
@@ -208,10 +218,9 @@ export default function NewPersonPage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none bg-white"
                   required
                 >
-                  <option value="imcn">IMCN</option>
-                  <option value="imaw">IMAW</option>
-                  <option value="imft">IMFT</option>
-                  <option value="职能部门">职能部门</option>
+                  {activeFactories.map((factory) => (
+                    <option key={factory.id} value={factory.code}>{factory.name}</option>
+                  ))}
                 </select>
               </div>
               <Input

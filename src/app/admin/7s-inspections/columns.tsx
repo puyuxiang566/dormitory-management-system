@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { DataTableColumn } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { useFactories } from '@/hooks/useFactories';
 
 // 7S检查记录类型
 export interface InspectionRecord {
@@ -59,17 +60,12 @@ const RoomCell = React.memo(function RoomCell({ record }: { record: InspectionRe
 });
 
 // 工厂部门列组件
-const FactoryDeptCell = React.memo(function FactoryDeptCell({ record }: { record: InspectionRecord }) {
-  const factoryLabel = record.factory === 'imaw' ? 'IMAW' 
-    : record.factory === 'imft' ? 'IMFT' 
-    : record.factory === '职能部门' ? '职能部门' 
-    : 'IMCN';
-
+const FactoryDeptCell = React.memo(function FactoryDeptCell({ record, factoryName }: { record: InspectionRecord; factoryName: string }) {
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center gap-1.5">
         <BuildingOfficeIcon className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-xs font-medium text-slate-600">{factoryLabel}</span>
+        <span className="text-xs font-medium text-slate-600">{factoryName}</span>
       </div>
       <span className="text-xs text-slate-500 pl-5">{record.department || '-'}</span>
     </div>
@@ -151,6 +147,7 @@ interface UseInspectionColumnsProps {
 export function useInspectionColumns({
   onDelete,
 }: UseInspectionColumnsProps): DataTableColumn<InspectionRecord>[] {
+  const { nameOf } = useFactories();
   return useMemo(() => [
     {
       key: 'inspectionDate',
@@ -168,7 +165,7 @@ export function useInspectionColumns({
       key: 'factory',
       title: '工厂/部门',
       width: '15%',
-      render: (record: InspectionRecord) => <FactoryDeptCell record={record} />,
+      render: (record: InspectionRecord) => <FactoryDeptCell record={record} factoryName={nameOf(record.factory)} />,
     },
     {
       key: 'personName',
@@ -200,5 +197,5 @@ export function useInspectionColumns({
         />
       ),
     },
-  ], [onDelete]);
+  ], [onDelete, nameOf]);
 }

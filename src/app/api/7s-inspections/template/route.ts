@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
+import { getFactoryOptions } from '@/lib/factory-config';
 
 export async function GET() {
   try {
+    const factories = await getFactoryOptions({ includeInactive: false });
     const templateData = [
       {
         '日期': '2024-01-15',
         '宿舍号': 'A101',
-        '所属工厂': 'imcn',
+        '所属工厂': factories[0]?.name || 'IMCN',
         '所属部门': '生产部',
         '姓名': '张三',
         '不合格项': '地面有垃圾',

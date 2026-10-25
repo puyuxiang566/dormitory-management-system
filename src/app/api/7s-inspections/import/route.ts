@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
+import { getFactoryOptions } from '@/lib/factory-config';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 
 interface InspectionRow {
   inspectionDate: Date;
@@ -54,7 +56,16 @@ function parseDate(dateValue: any): Date | null {
 async function parseRow(row: any, rowIndex: number): Promise<InspectionRow | null> {
   const dateValue = row['日期'];
   const roomNumber = String(row['宿舍号'] || row['roomNumber'] || '').trim();
-  const factory = String(row['所属工厂'] || row['factory'] || '').trim();
+  const factoryRaw = String(row['所属工厂'] || row['factory'] || '').trim();
+  const factories = await getFactoryOptions();
+  const factoryMap: Record<string, string> = {};
+  factories.forEach((item) => {
+    factoryMap[item.code.toLowerCase()] = item.code;
+    factoryMap[item.name.toLowerCase()] = item.code;
+  });
+  const factory = factoryRaw
+    ? (factoryMap[factoryRaw.toLowerCase()] || normalizeFactoryCode(factoryRaw))
+    : '';
   const department = String(row['所属部门'] || row['department'] || '').trim();
   const personName = String(row['姓名'] || row['personName'] || '').trim();
   const violationDesc = String(row['不合格项'] || row['violationDesc'] || '').trim();

@@ -18,6 +18,7 @@ import { useToastHelpers } from '@/components/ui';
 import { api, ApiResponse } from '@/lib/api';
 import { useInspectionColumns, InspectionRecord } from './columns';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useFactories } from '@/hooks/useFactories';
 
 interface InspectionsClientProps {
   initialData: ApiResponse<InspectionRecord[]>;
@@ -58,6 +59,7 @@ export default function InspectionsClient({
 
   // 分类列表
   const [categories, setCategories] = useState<ViolationCategory[]>([]);
+  const { factories } = useFactories();
 
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -438,10 +440,9 @@ export default function InspectionsClient({
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none bg-white text-sm"
               >
                 <option value="">全部工厂</option>
-                <option value="imcn">IMCN</option>
-                <option value="imaw">IMAW</option>
-                <option value="imft">IMFT</option>
-                <option value="职能部门">职能部门</option>
+                {factories.map((factory) => (
+                  <option key={factory.id} value={factory.code}>{factory.name}</option>
+                ))}
               </select>
             </div>
 

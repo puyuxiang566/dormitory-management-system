@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 import { updatePersonPermissionGroup, disablePersonFaceRecords, createFaceRecordForPerson } from '@/lib/services/faceSyncService';
 
 interface RouteParams {
@@ -115,7 +116,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       gender,
       status,
       bedNumber,
-      factory,
+      factory: factory === undefined ? undefined : normalizeFactoryCode(factory),
     };
 
     if (buildingId !== undefined) {

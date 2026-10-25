@@ -21,10 +21,16 @@ import { useToastHelpers } from '@/components/ui';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import { api, Building, Room } from '@/lib/api';
 import { formatNumber, getStatusColor, getStatusLabel } from '@/lib/utils';
+import { useFactories } from '@/hooks/useFactories';
 
-// colors for gender and factory specifically
+// colors for gender specifically
 const GENDER_COLORS: Record<string, string> = { '男': '#3b82f6', '女': '#ec4899', '未知': '#94a3b8' };
-const FACTORY_COLORS: Record<string, string> = { 'IMCN': '#10b981', 'IMAW': '#f59e0b', 'IMFT': '#8b5cf6', '职能部门': '#ec4899', '未知': '#94a3b8' };
+
+const RADIAN = Math.PI / 180;
+// 饼图小扇区判定阈值：占比低于 3% 的相邻扇区标签会重叠，需要垂直错开
+const SMALL_SLICE_PERCENT = 0.03;
+// 相邻小扇区标签的垂直错开间距（px），需大于标签字号 16px
+const SMALL_SLICE_LABEL_GAP = 24;
 
 // 楼栋卡片组件
 function BuildingCard({
@@ -301,6 +307,7 @@ export default function DormsPage() {
   const { data: buildingsData, loading: buildingsLoading, error: buildingsError, refetch } = useBuildings();
   const { data: statsData, loading: statsLoading } = useStatistics();
   const { data: distributionData, loading: distributionLoading } = useDistribution();
+  const { factories, nameOf, colorOf } = useFactories();
 
   const buildings = buildingsData?.data || [];
   console.log('buildingsData:', buildingsData);
@@ -324,14 +331,61 @@ export default function DormsPage() {
 
   const factoryData = useMemo(() => {
     const data: { name: string; value: number }[] = dist?.factory || [];
-    const order = ['IMCN', 'IMFT', 'IMAW', '职能部门', '未知'];
+    const order = [...factories.map((factory) => factory.name), '未知'];
     const result: { name: string; value: number }[] = [];
     for (const name of order) {
       const item = data.find((d) => d.name === name);
       if (item) result.push(item);
     }
     return result;
-  }, [dist?.factory]);
+  }, [dist?.factory, factories]);
+
+  // 预计算小扇区标签的垂直错位：相邻的小占比扇区默认标签会重叠，按角度排序后均匀错开
+  const smallSliceOffsets = useMemo(() => {
+    const offsets = new Map<number, number>();
+    const total = factoryData.reduce((sum: number, item: { value: number }) => sum + item.value, 0);
+    if (total <= 0) return offsets;
+    let acc = 0;
+    const slices = factoryData.map((item: { value: number }, index: number) => {
+      const mid = 90 - ((acc + item.value / 2) / total) * 360; // startAngle=90，顺时针
+      acc += item.value;
+      return { index, mid, percent: item.value / total };
+    });
+    const small = slices.filter((s) => s.percent < SMALL_SLICE_PERCENT).sort((a, b) => a.mid - b.mid);
+    small.forEach((s, i) => {
+      offsets.set(s.index, (i - (small.length - 1) / 2) * SMALL_SLICE_LABEL_GAP);
+    });
+    return offsets;
+  }, [factoryData]);
+
+  // 工厂分布饼图自定义标签：两段式引导线，小扇区标签外推并垂直错位避免重叠，文字使用扇区颜色
+  const renderFactoryPieLabel = (props: any) => {
+    const { cx, cy, midAngle, outerRadius, name, value, index, fill } = props;
+    const sin = Math.sin(-midAngle * RADIAN);
+    const cos = Math.cos(-midAngle * RADIAN);
+    const offset = smallSliceOffsets.get(index) ?? 0;
+    const sx = cx + outerRadius * cos;
+    const sy = cy + outerRadius * sin;
+    const mx = cx + (outerRadius + 10) * cos;
+    const my = cy + (outerRadius + 10) * sin;
+    const ex = mx + (cos >= 0 ? 1 : -1) * 14;
+    const ey = my + offset;
+    return (
+      <g>
+        <polyline points={`${sx},${sy} ${mx},${my} ${ex},${ey}`} fill="none" stroke="#94a3b8" strokeWidth={1} />
+        <text
+          x={ex + (cos >= 0 ? 3 : -3)}
+          y={ey}
+          dy={4}
+          textAnchor={cos >= 0 ? 'start' : 'end'}
+          fontSize={16}
+          fill={fill || '#475569'}
+        >
+          {`${name} ${value}人`}
+        </text>
+      </g>
+    );
+  };
 
   const handleToggle = (id: number) => {
     setExpandedBuilding(expandedBuilding === id ? null : id);
@@ -732,13 +786,14 @@ export default function DormsPage() {
                     outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
-                    label={({name, value}) => `${name} ${value}人`}
+                    label={renderFactoryPieLabel}
+                    labelLine={false}
                     startAngle={90}
                     endAngle={-270}
                     isAnimationActive={false}
                   >
                     {factoryData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={FACTORY_COLORS[entry.name] || COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={colorOf(entry.name) || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <RechartsTooltip />
@@ -750,7 +805,7 @@ export default function DormsPage() {
           <div className="flex justify-center gap-4 mt-2 flex-wrap">
             {factoryData.map((item: any) => (
               <div key={item.name} className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: FACTORY_COLORS[item.name] }}></span>
+                <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: colorOf(item.name) }}></span>
                 <span className="text-sm text-slate-600">{item.name}</span>
               </div>
             ))}
@@ -957,6 +1012,7 @@ function RoomManageModal({
   const [formData, setFormData] = useState({ assetCode: '', name: '', category: '家具', specification: '', price: '' });
   const [bedCountEdit, setBedCountEdit] = useState<number | ''>('');
   const toast = useToastHelpers();
+  const { nameOf } = useFactories();
 
   const loadAssets = useCallback(async () => {
     if (!room) return;
@@ -1035,7 +1091,7 @@ function RoomManageModal({
                   <div className="text-xs text-slate-500 mt-1">
                     {person.employeeId && <span>工号: {person.employeeId}</span>}
                     {person.department && <span className="ml-2">部门: {person.department}</span>}
-                    {person.factory && <span className="ml-2">工厂: {person.factory === 'imaw' ? 'IMAW' : person.factory === 'imft' ? 'IMFT' : person.factory === '职能部门' ? '职能部门' : 'IMCN'}</span>}
+                    {person.factory && <span className="ml-2">工厂: {nameOf(person.factory)}</span>}
                   </div>
                 </div>
               ))}

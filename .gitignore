@@ -1,5 +1,6 @@
-# 依赖
+# 依赖（node_modules/ 匹配任意深度，同时排除发布包内的依赖）
 /node_modules
+node_modules/
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -49,6 +50,7 @@ next-env.d.ts
 .codebuddy/
 .omo/
 .sisyphus/
+.trae/
 
 # 操作系统
 .DS_Store
@@ -60,3 +62,6 @@ __pycache__/
 
 # 压缩包等大文件
 *.rar
+
+# Windows 快捷方式（指向本机服务，机器专用）
+*.lnk

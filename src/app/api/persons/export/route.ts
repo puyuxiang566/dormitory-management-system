@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
 import { decrypt } from '@/lib/crypto';
+import { getFactoryOptions } from '@/lib/factory-config';
+import { buildFactoryNameMap } from '@/lib/factory-utils';
 
 export async function GET(request: Request) {
   try {
@@ -73,12 +75,8 @@ export async function GET(request: Request) {
       BLACKLISTED: '黑名单',
     };
 
-    const factoryMap: Record<string, string> = {
-      imcn: 'IMCN',
-      imaw: 'IMAW',
-      imft: 'IMFT',
-      '职能部门': '职能部门',
-    };
+    const factories = await getFactoryOptions();
+    const factoryMap = buildFactoryNameMap(factories);
 
     const data: any[] = [];
     

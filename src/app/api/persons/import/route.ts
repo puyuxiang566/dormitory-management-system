@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
+import { getFactoryOptions } from '@/lib/factory-config';
+import { FactoryOption, normalizeFactoryCode } from '@/lib/factory-utils';
 
 interface ImportRow {
   employeeId: string;
@@ -86,7 +88,7 @@ function parseDate(dateValue: any): Date | null {
   return null;
 }
 
-async function parseRow(row: any, rowIndex: number): Promise<ImportRow | null> {
+async function parseRow(row: any, rowIndex: number, factoryOptions?: FactoryOption[]): Promise<ImportRow | null> {
   const employeeId = String(row['工号'] || row['employeeId'] || '').trim();
   const name = String(row['姓名'] || row['name'] || '').trim();
 
@@ -129,11 +131,18 @@ async function parseRow(row: any, rowIndex: number): Promise<ImportRow | null> {
   const statusRaw = row['状态'] || row['status'];
   const status = statusRaw ? (statusMap[String(statusRaw).toUpperCase()] || 'ACTIVE') : 'ACTIVE';
 
-  const factoryMap: Record<string, string> = {
-    'IMCN': 'imcn', 'IMAW': 'imaw', 'IMFT': 'imft', '职能部门': '职能部门',
-  };
+  const factories = factoryOptions || await getFactoryOptions();
+  const factoryMap: Record<string, string> = {};
+  factories.forEach((item) => {
+    factoryMap[item.code.toLowerCase()] = item.code;
+    factoryMap[item.name.toLowerCase()] = item.code;
+    factoryMap[normalizeFactoryCode(item.code).toLowerCase()] = item.code;
+  });
   const factoryRaw = row['工厂'] || row['factory'];
-  const factory = factoryRaw ? (factoryMap[String(factoryRaw).toUpperCase()] || 'imcn') : 'imcn';
+  const defaultFactory = factories[0]?.code || 'imcn';
+  const factory = factoryRaw
+    ? (factoryMap[String(factoryRaw).trim().toLowerCase()] || normalizeFactoryCode(String(factoryRaw)) || defaultFactory)
+    : defaultFactory;
 
   const isRoomLeaderRaw = row['是否舍长'] || row['isRoomLeader'];
   const isRoomLeader = isRoomLeaderRaw === '是' || isRoomLeaderRaw === 'true' || isRoomLeaderRaw === true;
@@ -349,9 +358,10 @@ export async function POST(request: Request) {
     };
 
     const rows: ImportRow[] = [];
+    const factoryOptions = await getFactoryOptions();
     for (let i = 0; i < data.length; i++) {
       const row = data[i] as any;
-      const parsed = await parseRow(row, i + 2);
+      const parsed = await parseRow(row, i + 2, factoryOptions);
       if (parsed) {
         rows.push(parsed);
       } else {

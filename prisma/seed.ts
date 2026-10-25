@@ -20,6 +20,23 @@ async function main() {
 
   console.log('创建管理员用户:', adminUser.username);
 
+  const defaultFactories = [
+    { code: 'imcn', name: 'IMCN', color: '#10b981', sortOrder: 0 },
+    { code: 'imft', name: 'IMFT', color: '#8b5cf6', sortOrder: 1 },
+    { code: 'imaw', name: 'IMAW', color: '#f59e0b', sortOrder: 2 },
+    { code: '职能部门', name: '职能部门', color: '#ec4899', sortOrder: 3 },
+  ];
+
+  for (const factory of defaultFactories) {
+    await prisma.factory.upsert({
+      where: { code: factory.code },
+      update: {},
+      create: factory,
+    });
+  }
+
+  console.log('创建工厂配置:', defaultFactories.length, '个');
+
   const building1 = await prisma.building.upsert({
     where: { name: '1号楼' },
     update: {},

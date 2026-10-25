@@ -136,6 +136,21 @@ model EmergencyContact {
   @@map("emergencycontact")
 }
 
+model Factory {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique(map: "Factory_code_key")
+  name      String
+  color     String   @default("#10b981")
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive], map: "Factory_isActive_idx")
+  @@index([sortOrder], map: "Factory_sortOrder_idx")
+  @@map("factory")
+}
+
 model FaceRecord {
   id                Int              @id @default(autoincrement())
   personId          Int?

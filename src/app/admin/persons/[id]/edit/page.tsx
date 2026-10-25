@@ -9,6 +9,8 @@ import {
 import { Button, Card, Input } from '@/components/ui';
 import { useToastHelpers } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useFactories } from '@/hooks/useFactories';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 
 export default function EditPersonPage() {
   const router = useRouter();
@@ -40,6 +42,7 @@ export default function EditPersonPage() {
 
   const [buildings, setBuildings] = useState<{ id: number; name: string }[]>([]);
   const [rooms, setRooms] = useState<{ id: number; roomNumber: string }[]>([]);
+  const { factories } = useFactories();
 
   useEffect(() => {
     async function loadData() {
@@ -73,7 +76,7 @@ export default function EditPersonPage() {
             phone: person.phone || '',
             idCard: person.idCard || '',
             gender: person.gender || '',
-            factory: person.factory || 'imcn',
+            factory: normalizeFactoryCode(person.factory) || 'imcn',
             status: person.status || 'ACTIVE',
             buildingId: person.buildingId?.toString() || '',
             roomId: person.roomId?.toString() || '',
@@ -270,10 +273,11 @@ export default function EditPersonPage() {
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none bg-white"
                   required
                 >
-                  <option value="imcn">IMCN</option>
-                  <option value="imaw">IMAW</option>
-                  <option value="imft">IMFT</option>
-                  <option value="职能部门">职能部门</option>
+                  {factories
+                    .filter((factory) => factory.isActive || normalizeFactoryCode(factory.code) === normalizeFactoryCode(formData.factory))
+                    .map((factory) => (
+                      <option key={factory.id} value={factory.code}>{factory.name}</option>
+                    ))}
                 </select>
               </div>
               <Input

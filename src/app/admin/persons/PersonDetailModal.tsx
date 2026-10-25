@@ -5,6 +5,7 @@ import { Modal, Button } from '@/components/ui';
 import { Person } from '@/lib/api';
 import { formatDate, getStatusColor, getStatusLabel } from '@/lib/utils';
 import { StatusBadge } from './columns';
+import { useFactories } from '@/hooks/useFactories';
 
 interface PersonDetailModalProps {
   person: Person;
@@ -98,6 +99,7 @@ function TimelineView({ histories }: { histories: any[] }) {
 }
 
 export function PersonDetailModal({ person, isOpen, onClose }: PersonDetailModalProps) {
+  const { nameOf } = useFactories();
   return (
     <Modal
       isOpen={isOpen}
@@ -110,7 +112,7 @@ export function PersonDetailModal({ person, isOpen, onClose }: PersonDetailModal
           <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">姓名:</span> <span className="font-medium">{person.name}</span></div>
           <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">工号:</span> <span className="font-medium">{person.employeeId}</span></div>
           <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">性别:</span> <span className="font-medium">{person.gender === 'MALE' ? '男' : person.gender === 'FEMALE' ? '女' : '-'}</span></div>
-          <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">工厂:</span> <span className="font-medium">{person.factory === 'imaw' ? 'IMAW' : person.factory === 'imft' ? 'IMFT' : person.factory === '职能部门' ? '职能部门' : 'IMCN'}</span></div>
+          <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">工厂:</span> <span className="font-medium">{nameOf(person.factory)}</span></div>
           <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">部门:</span> <span className="font-medium">{person.department || '-'}</span></div>
           <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">职位:</span> <span className="font-medium">{person.position || '-'}</span></div>
           <div className="flex"><span className="text-slate-500 w-16 mb-0 shrink-0">手机:</span> <span className="font-medium">{person.phone || '-'}</span></div>

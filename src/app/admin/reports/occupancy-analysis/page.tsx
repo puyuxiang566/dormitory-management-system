@@ -29,25 +29,8 @@ import {
 } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { exportOccupancyReport } from '@/lib/export-occupancy-report';
+import { useFactories } from '@/hooks/useFactories';
 
-// 预定义部门配置（按固定顺序）
-const DEPARTMENTS = [
-  { key: 'imcn', label: 'IMCN' },
-  { key: 'imaw', label: 'IMAW' },
-  { key: 'imft', label: 'IMFT' },
-  { key: '职能部门', label: '职能部门' },
-];
-
-// 部门颜色映射 - 与其他地方保持一致
-const DEPARTMENT_COLORS_MAP: Record<string, string> = {
-  'IMCN': '#10b981',
-  'IMAW': '#f59e0b',
-  'IMFT': '#8b5cf6',
-  '职能部门': '#ec4899',
-};
-
-// 部门用多色区分
-const DEPARTMENT_COLORS = ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 const BUILDING_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 // 性别中文映射
@@ -112,6 +95,7 @@ export default function OccupancyAnalysisPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const { factories, colorOf } = useFactories();
 
   // 动态生成年份选项（当前年份到2024年，到2027年自动显示）
   const yearOptions = React.useMemo(() => {
@@ -185,6 +169,7 @@ export default function OccupancyAnalysisPage() {
         trendData,
         totalStats,
         periodLabel,
+        factoryOptions: factories,
       });
     } catch (error) {
       console.error('导出报告失败:', error);
@@ -213,13 +198,13 @@ export default function OccupancyAnalysisPage() {
       statsMap[key] = (statsMap[key] || 0) + d.count;
     });
 
-    // 按预定义顺序返回数据，确保显示4个固定部门
-    return DEPARTMENTS.map(dept => ({
-      department: dept.label,
-      count: statsMap[dept.label] || 0,
-      color: DEPARTMENT_COLORS_MAP[dept.label] || '#94a3b8',
+    // 按系统设置中的工厂顺序返回数据
+    return factories.map(factory => ({
+      department: factory.name,
+      count: statsMap[factory.name] || 0,
+      color: colorOf(factory.code),
     }));
-  }, [departmentStats]);
+  }, [departmentStats, factories, colorOf]);
 
   const periodLabel = React.useMemo(() => {
     if (selectedPeriod.startsWith('year_')) {

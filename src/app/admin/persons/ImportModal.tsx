@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { Modal, Button, Loading } from '@/components/ui';
 import { useToastHelpers } from '@/components/ui';
 import { api } from '@/lib/api';
+import { useFactories } from '@/hooks/useFactories';
 
 interface DuplicateInfo {
   rowIndex: number;
@@ -62,6 +63,7 @@ interface ImportModalProps {
 }
 
 export function ImportModal({ isOpen, onClose, onSuccess }: ImportModalProps) {
+  const { nameOf } = useFactories();
   const [importing, setImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<{
@@ -241,7 +243,7 @@ export function ImportModal({ isOpen, onClose, onSuccess }: ImportModalProps) {
                 </div>
                 {[
                   { label: '性别', importVal: dup.importData.gender, existingVal: dup.existingPerson.gender },
-                  { label: '工厂', importVal: dup.importData.factory, existingVal: dup.existingPerson.factory },
+                  { label: '工厂', importVal: dup.importData.factory ? nameOf(dup.importData.factory) : '', existingVal: dup.existingPerson.factory ? nameOf(dup.existingPerson.factory) : '' },
                   { label: '部门', importVal: dup.importData.department, existingVal: dup.existingPerson.department },
                   { label: '职位', importVal: dup.importData.position, existingVal: dup.existingPerson.position },
                   { label: '电话', importVal: dup.importData.phone, existingVal: dup.existingPerson.phone },

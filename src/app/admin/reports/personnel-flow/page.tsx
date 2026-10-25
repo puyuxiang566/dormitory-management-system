@@ -30,28 +30,7 @@ import {
 } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { exportPersonnelFlowReport } from '@/lib/export-personnel-flow-report';
-
-// 工厂专属颜色
-const FACTORY_COLORS: Record<string, string> = {
-  'IMCN': '#10b981',
-  'IMAW': '#f59e0b',
-  'IMFT': '#8b5cf6',
-  '职能部门': '#ec4899',
-  '未知': '#94a3b8'
-};
-
-// 工厂名格式化显示（大写）
-function formatFactoryName(factory: string): string {
-  const upperFactory = factory.toUpperCase();
-  const nameMap: Record<string, string> = {
-    'IMCN': 'IMCN',
-    'IMAW': 'IMAW',
-    'IMFT': 'IMFT',
-    '职能部门': '职能部门',
-    '未知': '未知',
-  };
-  return nameMap[upperFactory] || nameMap[factory] || factory;
-}
+import { useFactories } from '@/hooks/useFactories';
 
 // 时间周期配置
 const periodConfig: Record<string, { label: string; trendDays: number }> = {
@@ -76,6 +55,7 @@ export default function PersonnelFlowAnalysisPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const { factories, nameOf, colorOf } = useFactories();
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   const [flowData, setFlowData] = useState<FlowData[]>([]);
   const [checkInByFactory, setCheckInByFactory] = useState<any[]>([]);
@@ -159,6 +139,7 @@ export default function PersonnelFlowAnalysisPage() {
         checkInByFactoryDetail,
         summaryStats,
         periodLabel,
+        factoryOptions: factories,
       });
     } catch (error) {
       console.error('导出报告失败:', error);
@@ -484,20 +465,20 @@ export default function PersonnelFlowAnalysisPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }: any) => `${formatFactoryName(name)} ${(percent * 100).toFixed(1)}%`}
+                  label={({ name, percent }: any) => `${nameOf(name)} ${(percent * 100).toFixed(1)}%`}
                   outerRadius={90}
                   fill="#8884d8"
                   dataKey="value"
                   nameKey="name"
                 >
                   {checkInByFactory.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={FACTORY_COLORS[formatFactoryName(entry.name)] || FACTORY_COLORS['未知']} />
+                    <Cell key={`cell-${index}`} fill={colorOf(entry.name)} />
                   ))}
                 </Pie>
                 <Tooltip />
                 <Legend
                   formatter={(value) => (
-                    <span style={{ color: FACTORY_COLORS[formatFactoryName(value)] || '#64748b', fontWeight: 600 }}>{formatFactoryName(value)}</span>
+                    <span style={{ color: colorOf(value), fontWeight: 600 }}>{nameOf(value)}</span>
                   )}
                 />
               </PieChart>
@@ -522,20 +503,20 @@ export default function PersonnelFlowAnalysisPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }: any) => `${formatFactoryName(name)} ${(percent * 100).toFixed(1)}%`}
+                  label={({ name, percent }: any) => `${nameOf(name)} ${(percent * 100).toFixed(1)}%`}
                   outerRadius={90}
                   fill="#8884d8"
                   dataKey="value"
                   nameKey="name"
                 >
                   {checkOutByFactory.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={FACTORY_COLORS[formatFactoryName(entry.name)] || FACTORY_COLORS['未知']} />
+                    <Cell key={`cell-${index}`} fill={colorOf(entry.name)} />
                   ))}
                 </Pie>
                 <Tooltip />
                 <Legend
                   formatter={(value) => (
-                    <span style={{ color: FACTORY_COLORS[formatFactoryName(value)] || '#64748b', fontWeight: 600 }}>{formatFactoryName(value)}</span>
+                    <span style={{ color: colorOf(value), fontWeight: 600 }}>{nameOf(value)}</span>
                   )}
                 />
               </PieChart>
@@ -555,7 +536,7 @@ export default function PersonnelFlowAnalysisPage() {
         <div className="h-[350px]">
           {checkInByFactoryDetail.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={checkInByFactoryDetail.map(d => ({ ...d, factory: formatFactoryName(d.factory) }))} layout="vertical">
+            <BarChart data={checkInByFactoryDetail.map(d => ({ ...d, factory: nameOf(d.factory) }))} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
               <YAxis
@@ -582,12 +563,12 @@ export default function PersonnelFlowAnalysisPage() {
               />
               <Bar dataKey="checkIns" name="checkIns" radius={[0, 4, 4, 0]}>
                 {checkInByFactoryDetail.map((entry, index) => (
-                  <Cell key={`checkIn-${index}`} fill={FACTORY_COLORS[formatFactoryName(entry.factory)] || FACTORY_COLORS['未知']} />
+                  <Cell key={`checkIn-${index}`} fill={colorOf(entry.factory)} />
                 ))}
               </Bar>
               <Bar dataKey="checkOuts" name="checkOuts" radius={[0, 4, 4, 0]}>
                 {checkInByFactoryDetail.map((entry, index) => (
-                  <Cell key={`checkOut-${index}`} fill={FACTORY_COLORS[formatFactoryName(entry.factory)] || FACTORY_COLORS['未知']} fillOpacity={0.4} />
+                  <Cell key={`checkOut-${index}`} fill={colorOf(entry.factory)} fillOpacity={0.4} />
                 ))}
               </Bar>
             </BarChart>
@@ -619,8 +600,8 @@ export default function PersonnelFlowAnalysisPage() {
               {checkInByFactoryDetail.map((item, index) => {
                 const netChange = item.checkIns - item.checkOuts;
                 const changeRate = item.checkIns > 0 ? ((netChange / item.checkIns) * 100).toFixed(1) : '0';
-                const factoryColor = FACTORY_COLORS[formatFactoryName(item.factory)] || '#94a3b8';
-                const displayName = formatFactoryName(item.factory);
+                const factoryColor = colorOf(item.factory);
+                const displayName = nameOf(item.factory);
                 
                 return (
                   <tr key={index} className="border-b border-slate-100 hover:bg-slate-50">

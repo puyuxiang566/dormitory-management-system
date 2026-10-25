@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 
 interface RouteParams {
   params: { id: string };
@@ -69,7 +70,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       updateData.roomNumber = roomNumber;
     }
     if (factory !== undefined) {
-      updateData.factory = factory;
+      updateData.factory = normalizeFactoryCode(factory);
     }
     if (department !== undefined) {
       updateData.department = department;

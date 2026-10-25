@@ -14,6 +14,7 @@ import {
 import { DataTableColumn } from '@/components/ui';
 import { Person } from '@/lib/api';
 import { getStatusColor, getStatusLabel, formatDate } from '@/lib/utils';
+import { useFactories } from '@/hooks/useFactories';
 
 // 状态标签组件 - 使用 React.memo 优化
 export const StatusBadge = React.memo(function StatusBadge({ status }: { status: string }) {
@@ -25,7 +26,7 @@ export const StatusBadge = React.memo(function StatusBadge({ status }: { status:
 });
 
 // 人员信息列组件
-const PersonInfoCell = React.memo(function PersonInfoCell({ person }: { person: Person }) {
+const PersonInfoCell = React.memo(function PersonInfoCell({ person, factoryName }: { person: Person; factoryName: string }) {
   return (
     <div className="flex items-center gap-3">
       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
@@ -43,7 +44,7 @@ const PersonInfoCell = React.memo(function PersonInfoCell({ person }: { person: 
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500 leading-none">{person.employeeId}</span>
           <span className="text-[10px] leading-none px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">
-            {person.factory === 'imaw' ? 'IMAW' : person.factory === 'imft' ? 'IMFT' : person.factory === '职能部门' ? '职能部门' : 'IMCN'}
+            {factoryName}
           </span>
         </div>
       </div>
@@ -189,12 +190,13 @@ export function usePersonColumns({
   onDelete,
   onCheckout,
 }: UsePersonColumnsProps): DataTableColumn<Person>[] {
+  const { nameOf } = useFactories();
   return useMemo(() => [
     {
       key: 'name',
       title: '人员信息',
       width: '22%',
-      render: (person: Person) => <PersonInfoCell person={person} />,
+      render: (person: Person) => <PersonInfoCell person={person} factoryName={nameOf(person.factory)} />,
     },
     {
       key: 'department',
@@ -240,5 +242,5 @@ export function usePersonColumns({
         />
       ),
     },
-  ], [onView, onDelete, onCheckout]);
+  ], [onView, onDelete, onCheckout, nameOf]);
 }

@@ -99,7 +99,7 @@ export interface Person {
   checkInDate?: string;
   checkOutDate?: string;
   gender?: 'MALE' | 'FEMALE';
-  factory?: 'imcn' | 'imaw' | 'imft' | '职能部门';
+  factory?: string;
   building?: { name: string } | null;
   room?: { roomNumber: string } | null;
   emergencyContacts?: any[];

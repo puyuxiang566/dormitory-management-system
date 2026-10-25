@@ -12,8 +12,13 @@ import {
   KeyIcon,
   EyeIcon,
   EyeSlashIcon,
+  BuildingOffice2Icon,
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
-import { Button, Card, Badge, Input } from '@/components/ui';
+import { Button, Card, Badge, Input, Modal } from '@/components/ui';
+import { FactoryOption, sortFactoryOptions } from '@/lib/factory-utils';
 import UserManagement from '@/components/ui/UserManagement';
 
 // 设置菜单项
@@ -42,6 +47,12 @@ const menuItems: SettingMenu[] = [
     label: '用户管理',
     description: '管理系统登录账号、添加删除用户',
     icon: UserGroupIcon,
+  },
+  {
+    id: 'factories',
+    label: '工厂管理',
+    description: '自定义工厂代号、名称、颜色与排序',
+    icon: BuildingOffice2Icon,
   },
   {
     id: 'fees',
@@ -204,6 +215,338 @@ const GeneralSettings = () => {
           {loading ? '保存中...' : '保存设置'}
         </Button>
       </div>
+    </div>
+  );
+};
+
+// 工厂设置（自定义工厂代号）
+const FactorySettings = () => {
+  const [factories, setFactories] = useState<FactoryOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingFactory, setEditingFactory] = useState<FactoryOption | null>(null);
+  const [deletingFactory, setDeletingFactory] = useState<FactoryOption | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [formData, setFormData] = useState({
+    code: '',
+    name: '',
+    color: '#10b981',
+    sortOrder: 0,
+    isActive: true,
+  });
+
+  const fetchFactories = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/factories', { cache: 'no-store' });
+      if (!res.ok) throw new Error('获取工厂配置失败');
+      const result = await res.json();
+      const list: FactoryOption[] = Array.isArray(result) ? result : result.data || [];
+      setFactories(sortFactoryOptions(list));
+    } catch (error) {
+      console.error('Error loading factories:', error);
+      setMessage({ type: 'error', text: '获取工厂配置失败' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFactories();
+  }, []);
+
+  const openCreateModal = () => {
+    setEditingFactory(null);
+    setFormData({
+      code: '',
+      name: '',
+      color: '#10b981',
+      sortOrder: factories.length > 0 ? Math.max(...factories.map((item) => item.sortOrder)) + 1 : 0,
+      isActive: true,
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (factory: FactoryOption) => {
+    setEditingFactory(factory);
+    setFormData({
+      code: factory.code,
+      name: factory.name,
+      color: factory.color,
+      sortOrder: factory.sortOrder,
+      isActive: factory.isActive,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.code.trim() || !formData.name.trim()) {
+      setMessage({ type: 'error', text: '工厂代号和名称不能为空' });
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(
+        editingFactory ? `/api/factories/${editingFactory.id}` : '/api/factories',
+        {
+          method: editingFactory ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || '保存失败');
+
+      setMessage({ type: 'success', text: editingFactory ? '工厂配置更新成功' : '工厂配置创建成功' });
+      setIsModalOpen(false);
+      await fetchFactories();
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '保存失败' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!deletingFactory) return;
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/factories/${deletingFactory.id}`, { method: 'DELETE' });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || '停用失败');
+
+      setMessage({ type: 'success', text: '工厂配置已停用，历史数据保持不变' });
+      setDeletingFactory(null);
+      await fetchFactories();
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '停用失败' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (factory: FactoryOption) => {
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/factories/${factory.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !factory.isActive }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || '状态切换失败');
+      setMessage({ type: 'success', text: `工厂配置已${factory.isActive ? '停用' : '启用'}` });
+      await fetchFactories();
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '状态切换失败' });
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-8 text-slate-500">加载中...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="bg-blue-50 border-blue-200">
+        <div className="flex items-start gap-3">
+          <BuildingOffice2Icon className="w-5 h-5 text-blue-500 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-blue-800">工厂代号用于人员档案、宿舍资源、报表分析等项目</p>
+            <p className="text-sm text-blue-700 mt-1">
+              修改工厂代号时，系统会自动同步更新人员档案和 7S 检查记录中的历史数据；名称和颜色会立即在相关页面生效。
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">共 {factories.length} 个工厂配置</p>
+        <Button onClick={openCreateModal}>
+          <PlusIcon className="w-4 h-4 mr-2" />
+          新增工厂
+        </Button>
+      </div>
+
+      <div className="border border-slate-200 rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr className="text-left text-slate-600">
+              <th className="py-3 px-4 font-medium">工厂代号</th>
+              <th className="py-3 px-4 font-medium">显示名称</th>
+              <th className="py-3 px-4 font-medium">颜色</th>
+              <th className="py-3 px-4 font-medium">排序</th>
+              <th className="py-3 px-4 font-medium">状态</th>
+              <th className="py-3 px-4 font-medium text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {factories.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-slate-400">暂无工厂配置</td>
+              </tr>
+            ) : (
+              factories.map((factory) => (
+                <tr key={factory.id} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="py-3 px-4 font-medium text-blue-900">{factory.code}</td>
+                  <td className="py-3 px-4">
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white"
+                      style={{ backgroundColor: factory.color }}
+                    >
+                      {factory.name}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="inline-flex items-center gap-2 text-slate-600">
+                      <span className="w-4 h-4 rounded border border-slate-200" style={{ backgroundColor: factory.color }} />
+                      {factory.color}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-slate-600">{factory.sortOrder}</td>
+                  <td className="py-3 px-4">
+                    <Badge variant={factory.isActive ? 'success' : 'warning'}>
+                      {factory.isActive ? '启用' : '停用'}
+                    </Badge>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => openEditModal(factory)}
+                        className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                        title="编辑"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(factory)}
+                        className="px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 rounded"
+                      >
+                        {factory.isActive ? '停用' : '启用'}
+                      </button>
+                      <button
+                        onClick={() => setDeletingFactory(factory)}
+                        className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
+                        title="删除"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {message && (
+        <div className={`p-3 rounded-lg ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+          {message.text}
+        </div>
+      )}
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingFactory ? '编辑工厂配置' : '新增工厂配置'}
+        size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={saving}>
+              取消
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? '保存中...' : '保存'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">工厂代号 *</label>
+            <Input
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              placeholder="例如 IMCN"
+            />
+            <p className="text-xs text-slate-400">代号用于数据关联，修改后会自动同步已有人员与检查记录</p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700">显示名称 *</label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="例如 IMCN"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">标识颜色</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  className="w-10 h-10 rounded border border-slate-200 bg-white cursor-pointer"
+                />
+                <Input
+                  value={formData.color}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">排序</label>
+              <Input
+                type="number"
+                value={String(formData.sortOrder)}
+                onChange={(e) => setFormData({ ...formData, sortOrder: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={formData.isActive}
+              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+              className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            />
+            启用该工厂（停用后不再出现在新增/编辑下拉框中）
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!deletingFactory}
+        onClose={() => setDeletingFactory(null)}
+        title="删除工厂配置"
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDeletingFactory(null)} disabled={saving}>
+              取消
+            </Button>
+            <Button
+              onClick={handleDeactivate}
+              disabled={saving}
+              className="bg-red-500 hover:bg-red-600 border-red-500 text-white"
+            >
+              {saving ? '处理中...' : '确认删除'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          删除后将停用工厂「{deletingFactory?.name}」，已有的人员和检查记录会保留。确认继续吗？
+        </p>
+      </Modal>
     </div>
   );
 };
@@ -730,6 +1073,8 @@ export default function SettingsPage() {
         return <PasswordSettings />;
       case 'users':
         return <UserManagement />;
+      case 'factories':
+        return <FactorySettings />;
       case 'fees':
         return <FeeSettings />;
       case 'menu':
@@ -794,7 +1139,7 @@ export default function SettingsPage() {
                   {menuItems.find(m => m.id === activeMenu)?.description}
                 </p>
               </div>
-              {activeMenu !== 'password' && activeMenu !== 'users' && activeMenu !== 'fees' && activeMenu !== 'menu' && activeMenu !== 'general' && (
+              {activeMenu !== 'password' && activeMenu !== 'users' && activeMenu !== 'factories' && activeMenu !== 'fees' && activeMenu !== 'menu' && activeMenu !== 'general' && (
                 <Button variant="primary">
                   <CheckIcon className="w-4 h-4 mr-2" />
                   保存设置

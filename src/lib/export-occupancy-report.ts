@@ -1,4 +1,5 @@
 import PptxGenJS from 'pptxgenjs';
+import type { FactoryOption } from '@/lib/factory-utils';
 
 // 颜色常量（不带#，pptxgenjs规范）
 const COLORS = {
@@ -18,16 +19,14 @@ const COLORS = {
   genderFemale: 'EC4899',
 };
 
-// 工厂专属颜色映射
-const FACTORY_COLORS_MAP: Record<string, string> = {
-  'IMCN': '10B981',      // 绿
-  'IMAW': 'F59E0B',      // 橙
-  'IMFT': '8B5CF6',      // 紫
-  '职能部门': 'EC4899',  // 粉
+// 默认工厂顺序与颜色（未配置工厂时使用）
+const DEFAULT_FACTORY_ORDER = ['IMCN', 'IMAW', 'IMFT', '职能部门'];
+const DEFAULT_FACTORY_COLORS: Record<string, string> = {
+  'IMCN': '10B981',
+  'IMAW': 'F59E0B',
+  'IMFT': '8B5CF6',
+  '职能部门': 'EC4899',
 };
-
-// 预定义工厂顺序
-const FACTORY_ORDER = ['IMCN', 'IMAW', 'IMFT', '职能部门'];
 
 interface BuildingStat {
   id: number;
@@ -70,10 +69,21 @@ export interface OccupancyReportData {
   trendData: TrendDataPoint[];
   totalStats: TotalStats;
   periodLabel: string;
+  factoryOptions?: FactoryOption[];
 }
 
 export async function exportOccupancyReport(data: OccupancyReportData): Promise<void> {
   const { buildingStats, genderStats, departmentStats, trendData, totalStats, periodLabel } = data;
+
+  const configuredFactories = data.factoryOptions || [];
+  const factoryOrder = configuredFactories.length
+    ? configuredFactories.map((factory) => factory.name)
+    : DEFAULT_FACTORY_ORDER;
+  const factoryColors: Record<string, string> = { ...DEFAULT_FACTORY_COLORS };
+  configuredFactories.forEach((factory) => {
+    factoryColors[factory.name] = factory.color.replace('#', '').toUpperCase();
+    factoryColors[factory.code] = factoryColors[factory.name];
+  });
 
   const pres = new PptxGenJS();
   pres.layout = 'LAYOUT_16x9';
@@ -369,7 +379,7 @@ export async function exportOccupancyReport(data: OccupancyReportData): Promise<
     factoryStatsMap[d.department] = (factoryStatsMap[d.department] || 0) + d.count;
   });
 
-  const factoryData = FACTORY_ORDER.map(factory => ({
+  const factoryData = factoryOrder.map(factory => ({
     factory,
     count: factoryStatsMap[factory] || 0,
   }));
@@ -387,7 +397,7 @@ export async function exportOccupancyReport(data: OccupancyReportData): Promise<
       x: 0.3, y: 1.3, w: 9.4, h: 3.8,
       barDir: 'col',
       showTitle: false,
-      chartColors: FACTORY_ORDER.map(f => FACTORY_COLORS_MAP[f]),
+      chartColors: factoryOrder.map(f => factoryColors[f] || '94A3B8'),
       chartArea: { fill: { color: COLORS.white }, roundedCorners: true },
       catAxisLabelColor: COLORS.muted,
       catAxisLabelFontSize: 10,

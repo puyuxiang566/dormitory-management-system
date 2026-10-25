@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import * as XLSX from 'xlsx';
+import { getFactoryOptions } from '@/lib/factory-config';
+import { buildFactoryNameMap } from '@/lib/factory-utils';
 
 // 标记为动态路由
 export const dynamic = 'force-dynamic';
@@ -41,10 +43,11 @@ export async function GET(request: Request) {
     }
 
     // 准备Excel数据
+    const factoryNameMap = buildFactoryNameMap(await getFactoryOptions());
     const excelData = records.map(record => ({
       '日期': formatDate(record.inspectionDate),
       '宿舍号': record.roomNumber,
-      '所属工厂': record.factory,
+      '所属工厂': factoryNameMap[record.factory] || record.factory,
       '所属部门': record.department,
       '姓名': record.personName,
       '不合格项': record.violationDesc,

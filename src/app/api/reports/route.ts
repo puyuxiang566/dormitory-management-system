@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getFactoryOptions } from '@/lib/factory-config';
+import { buildFactoryNameMap } from '@/lib/factory-utils';
 
 // 获取报表统计数据
 export async function GET(request: NextRequest) {
@@ -241,13 +243,9 @@ async function getOccupancyReport(startDate: Date, endDate: Date, period: string
     _count: { id: true },
   });
 
-  // 工厂标签映射
-  const factoryLabelMap: Record<string, string> = {
-    'imcn': 'IMCN',
-    'imaw': 'IMAW',
-    'imft': 'IMFT',
-    '职能部门': '职能部门',
-  };
+  // 工厂标签映射（从系统设置读取）
+  const factories = await getFactoryOptions();
+  const factoryLabelMap = buildFactoryNameMap(factories);
 
   // 部门分布（兼容旧名称，保持4个工厂）
   const departmentStats = factoryStats.map(d => ({

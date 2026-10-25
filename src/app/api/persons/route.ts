@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createFaceRecordForPerson, updatePersonPermissionGroup, disablePersonFaceRecords } from '@/lib/services/faceSyncService';
+import { getFactoryOptions } from '@/lib/factory-config';
+import { normalizeFactoryCode } from '@/lib/factory-utils';
 
 export async function GET(request: Request) {
   try {
@@ -124,6 +126,9 @@ export async function POST(request: Request) {
       factory, // 工厂归属（二选一）
     } = body;
 
+    const factories = await getFactoryOptions({ includeInactive: false });
+    const defaultFactory = factories[0]?.code || 'imcn';
+
     // 创建人员档案
     const person = await prisma.person.create({
       data: {
@@ -137,7 +142,7 @@ export async function POST(request: Request) {
         buildingId,
         roomId,
         bedNumber,
-        factory: factory || 'imcn',
+        factory: normalizeFactoryCode(factory) || defaultFactory,
         status: 'ACTIVE',
         checkInDate: checkInDate ? new Date(checkInDate) : new Date(),
         ...(emergencyContacts && emergencyContacts.length > 0 && {
