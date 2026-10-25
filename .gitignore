@@ -65,3 +65,9 @@ __pycache__/
 
 # Windows 快捷方式（指向本机服务，机器专用）
 *.lnk
+
+# 发布包工作目录（本地存放发布版文件，打包后上传 GitHub Releases，不入库）
+/宿舍管理应用/
+
+# Release 打包产物
+*.zip
