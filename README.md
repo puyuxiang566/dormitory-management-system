@@ -98,6 +98,7 @@
 |------|------|------|
 | 人员档案管理 | ✅ 完成 | 员工信息、入住状态、紧急联系人、Excel 导入导出 |
 | 宿舍资源管理 | ✅ 完成 | 楼栋、房间、床位、资产绑定、宿舍地图 |
+| 更衣柜管理 | ✅ 完成 | 男女分区、排/层/柜号台账、工号带出人员信息、占用分配与释放、Excel 导入/批量导入 |
 | 资产管理 | ✅ 完成 | 房间资产登记与状态管理 |
 | 统计分析 | ✅ 完成 | 空置率、周转率、性别/部门分布 |
 
@@ -194,6 +195,9 @@ node create_admin.js
 | | `/api/persons/import` | POST | 人员信息 Excel 导入 |
 | 楼栋 | `/api/buildings` | GET | 列表 (含房间) |
 | 房间 | `/api/rooms` | GET,POST | 列表/创建 |
+| 更衣柜 | `/api/lockers` | GET,POST | 列表（含统计）/新建；`?export=true` 导出 Excel |
+| | `/api/lockers/[id]` | GET,PATCH,DELETE | 详情+变更历史；assign/release/disable/enable/编辑；删除 |
+| | `/api/lockers/lookup` | GET | 工号带出人员信息及占用柜检查 |
 | 资产 | `/api/assets` | GET,POST | 列表/创建 |
 | 抄表 | `/api/meter-readings` | GET,POST | 列表/创建 |
 | 账单 | `/api/bills` | GET,POST | 列表/创建 |
@@ -257,6 +261,7 @@ npm run test               # lint + type-check + API 测试
 | `/admin` | 仪表盘 |
 | `/admin/persons` | 人员档案 |
 | `/admin/dorms` | 宿舍资源 |
+| `/admin/lockers` | 更衣柜管理 |
 | `/admin/access` | 门禁管理 |
 | `/admin/fees` | 费用管理 |
 | `/admin/maintenance` | 报修维护 |

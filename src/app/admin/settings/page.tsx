@@ -73,12 +73,13 @@ const defaultMenuConfig = {
   dashboard: { label: '仪表盘', enabled: true },
   persons: { label: '人员档案', enabled: true },
   dorms: { label: '宿舍资源', enabled: true },
+  lockers: { label: '更衣柜管理', enabled: true },
   fees: { label: '费用管理', enabled: true },
   maintenance: { label: '报修维护', enabled: true },
   access: { label: '门禁管理', enabled: true },
   applications: { label: '申请管理', enabled: true },
   visitors: { label: '访客管理', enabled: true },
-  reports: { label: '报表统计', enabled: true },
+  reports: { label: '报表分析', enabled: true },
   inspections7s: { label: '7S检查记录', enabled: true },
 };
 

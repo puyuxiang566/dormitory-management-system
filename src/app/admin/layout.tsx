@@ -14,6 +14,7 @@ import {
   DocumentTextIcon,
   ArrowRightOnRectangleIcon,
   ClipboardDocumentCheckIcon,
+  LockClosedIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -23,6 +24,7 @@ const defaultMenuConfig = {
   dashboard: { label: '仪表盘', enabled: true },
   persons: { label: '人员档案', enabled: true },
   dorms: { label: '宿舍资源', enabled: true },
+  lockers: { label: '更衣柜管理', enabled: true },
   fees: { label: '费用管理', enabled: true },
   maintenance: { label: '报修维护', enabled: true },
   access: { label: '门禁管理', enabled: true },
@@ -149,6 +151,7 @@ export default function AdminLayout({
             <SidebarItem href="/admin" icon={HomeIcon} label="仪表盘" disabled={!menuConfig.dashboard?.enabled} />
             <SidebarItem href="/admin/persons" icon={UsersIcon} label="人员档案" disabled={!menuConfig.persons?.enabled} />
             <SidebarItem href="/admin/dorms" icon={BuildingOfficeIcon} label="宿舍资源" disabled={!menuConfig.dorms?.enabled} />
+            <SidebarItem href="/admin/lockers" icon={LockClosedIcon} label="更衣柜管理" disabled={!menuConfig.lockers?.enabled} />
             <SidebarItem href="/admin/fees" icon={CurrencyYenIcon} label="费用管理" disabled={!menuConfig.fees?.enabled} />
             <SidebarItem href="/admin/maintenance" icon={WrenchIcon} label="报修维护" disabled={!menuConfig.maintenance?.enabled} />
             <SidebarItem href="/admin/access" icon={ShieldCheckIcon} label="门禁管理" disabled={!menuConfig.access?.enabled} />

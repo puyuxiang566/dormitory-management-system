@@ -1,6 +1,6 @@
 {
   "name": "dormitory-management-system",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "set NEXT_TELEMETRY_DISABLED=1 && next dev",

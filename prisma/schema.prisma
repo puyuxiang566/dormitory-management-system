@@ -443,3 +443,42 @@ model InspectionRecord {
   @@index([inspector], map: "InspectionRecord_inspector_idx")
   @@map("inspectionrecord")
 }
+
+model Locker {
+  id        Int      @id @default(autoincrement())
+  gender    String
+  area      String
+  rowName   String
+  subRow    Int      @default(1)
+  lockerNo  String
+  status    String   @default("FREE")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments LockerAssignment[]
+
+  @@unique([gender, rowName, subRow, lockerNo], map: "Locker_unique_key")
+  @@index([gender], map: "Locker_gender_idx")
+  @@index([status], map: "Locker_status_idx")
+  @@map("locker")
+}
+
+model LockerAssignment {
+  id           Int       @id @default(autoincrement())
+  lockerId     Int
+  employeeId   String
+  employeeName String
+  factory      String?
+  department   String?
+  reason       String?
+  status       String    @default("ACTIVE")
+  assignedAt   DateTime  @default(now())
+  releasedAt   DateTime?
+  locker       Locker    @relation(fields: [lockerId], references: [id], onDelete: Cascade, map: "LockerAssignment_lockerId_fkey")
+
+  @@index([lockerId], map: "LockerAssignment_lockerId_idx")
+  @@index([employeeId], map: "LockerAssignment_employeeId_idx")
+  @@index([status], map: "LockerAssignment_status_idx")
+  @@map("locker_assignment")
+}

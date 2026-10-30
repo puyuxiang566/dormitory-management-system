@@ -51,6 +51,7 @@ next-env.d.ts
 .omo/
 .sisyphus/
 .trae/
+.workbuddy
 
 # 操作系统
 .DS_Store
@@ -71,3 +72,8 @@ __pycache__/
 
 # Release 打包产物
 *.zip
+
+# C# 启动器（Launcher/）构建与测试产物
+/Launcher/bin/
+/Launcher/obj/
+/Launcher/test-output/
